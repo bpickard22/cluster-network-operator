@@ -120,7 +120,8 @@ data:
       },
       "reconciler_cron_expression": "30 4 * * *",
       "log_level": "debug",
-      "log_file": "/tmp/whereabouts.log"
+      "log_file": "/tmp/whereabouts.log",
+      "configuration_path": "/etc/kubernetes/cni/net.d/whereabouts.d"
     }
 ---
 kind: ConfigMap
@@ -173,8 +174,7 @@ data:
           "enabled": true,
           "bootstrapKubeconfig": "{{ .KubeletKubeconfigPath }}",
           "certDir": "/etc/cni/multus/certs",
-          "certDuration": "24h"
-        },
+          "certDuration"nodeName
 {{ end }}
         "cniConfigDir": "/host/etc/cni/net.d",
         "multusConfigFile": "auto",
@@ -533,7 +533,7 @@ spec:
         - name: DEFAULT_SOURCE_DIRECTORY
           value: "/usr/src/route-override/bin/"
       - name: whereabouts-cni-bincopy
-        image: {{.WhereaboutsImage}}
+        image: quay.io/bpickard/node-slice-controller:revA
         command: ["/entrypoint/cnibincopy.sh"]
         resources:
           requests:
@@ -556,7 +556,7 @@ spec:
         - name: DEFAULT_SOURCE_DIRECTORY
           value: "/usr/src/whereabouts/bin/"
       - name: whereabouts-cni
-        image: {{.WhereaboutsImage}}
+        image: quay.io/bpickard/node-slice-controller:revA
         command:
           - /bin/sh
           - -c
@@ -574,6 +574,10 @@ spec:
             mkdir -p $CNI_CONF_DIR/whereabouts.d
             WHEREABOUTS_KUBECONFIG=$CNI_CONF_DIR/whereabouts.d/whereabouts.kubeconfig
             WHEREABOUTS_GLOBALCONFIG=$CNI_CONF_DIR/whereabouts.d/whereabouts.conf
+
+            # Write the nodename to the whereabouts.d directory for standardized hostname reference across cloud providers
+            
+            echo $NODENAME > $CNI_CONF_DIR/whereabouts.d/nodename
 
             # ------------------------------- Generate a "kube-config"
             SERVICE_ACCOUNT_PATH=/var/run/secrets/kubernetes.io/serviceaccount
@@ -661,6 +665,11 @@ spec:
         - name: whereabouts-configmap
           mountPath: /etc/whereabouts/config
         env:
+        - name: NODENAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
         - name: KUBERNETES_SERVICE_PORT
           value: "{{.KUBERNETES_SERVICE_PORT}}"
         - name: KUBERNETES_SERVICE_HOST
@@ -759,7 +768,7 @@ spec:
           - -c
           - >
             /usr/src/whereabouts/bin/entrypoint.sh -log-level debug
-        image: {{.WhereaboutsImage}}
+        image: quay.io/bpickard/node-slice-controller:revA
         resources:
           requests:
             cpu: "50m"
@@ -796,7 +805,6 @@ spec:
             items:
             - key: reconciler_cron_expression
               path: config
-{{- end}}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -822,12 +830,12 @@ spec:
                 fieldRef:
                   apiVersion: v1
                   fieldPath: spec.nodeName
-            - name: WHEREABOUTS_NAMESPACE
+            - name: WHEREABOLaunch nightly aws,no-spotUTS_NAMESPACE
               valueFrom:
                 fieldRef:
                   apiVersion: v1
                   fieldPath: metadata.namespace
-          image: quay.io/bpickard/node-slice-controller
+          image: quay.io/bpickard/node-slice-controller:revA
           name: whereabouts
           resources:
             limits:
@@ -866,3 +874,5 @@ spec:
             items:
             - key: whereabouts.conf
               path: whereabouts.conf
+{{- end}}
+---
